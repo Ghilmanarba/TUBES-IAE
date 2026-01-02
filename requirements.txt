@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+strawberry-graphql[fastapi]
+sqlalchemy
+passlib[bcrypt]
+python-jose[cryptography]
+httpx
+python-multipart

@@ -1,0 +1,9 @@
+type Mutation {
+  createTransaction(
+    id: strawberry.ID
+    userId: strawberry.ID
+    prescriptionId: str
+    totalPrice: float
+    status: str
+  ): String!
+}

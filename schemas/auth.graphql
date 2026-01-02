@@ -1,0 +1,16 @@
+type User {
+  id: ID!
+  username: String!
+  fullName: String!
+  nim: String!
+  role: String!
+}
+
+type AuthPayload {
+  token: String!
+  user: User!
+}
+
+type Mutation {
+  login(username: String!, password: String!): AuthPayload
+}

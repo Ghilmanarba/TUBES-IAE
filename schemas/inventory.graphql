@@ -1,0 +1,16 @@
+type Medicine {
+  id: ID!
+  name: String!
+  stock: Int!
+  price: Float!
+  category: String!
+}
+
+type Query {
+  medicines(category: String): [Medicine!]!
+  checkStock(medicineName: String!): Medicine
+}
+
+type Mutation {
+  updateStock(id: ID!, amount: Int!): String!
+}
