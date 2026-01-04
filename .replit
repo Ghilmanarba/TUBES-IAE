@@ -1,0 +1,56 @@
+modules = ["nodejs-20", "web", "python-3.11"]
+[agent]
+expertMode = true
+
+[nix]
+channel = "stable-25_05"
+packages = ["cargo", "libiconv", "rustc"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "bash start_services.sh"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 8001
+externalPort = 3003
+
+[[ports]]
+localPort = 8002
+externalPort = 3000
+
+[[ports]]
+localPort = 8003
+externalPort = 3002
+
+[[ports]]
+localPort = 8004
+externalPort = 3001
+
+[deployment]
+deploymentTarget = "vm"
+run = ["bash", "-c", "cd auth-service && python app.py & cd inventory-service && python app.py & cd transaction-service && python app.py & cd hospital-mock && python app.py & cd frontend && npm run preview -- --host 0.0.0.0 --port 5000"]
+build = ["bash", "-c", "cd frontend && npm run build"]
