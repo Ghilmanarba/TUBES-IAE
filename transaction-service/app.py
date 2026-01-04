@@ -1,8 +1,13 @@
 import strawberry
 import httpx
 import sqlite3
+import os
 from fastapi import FastAPI
 from strawberry.fastapi import GraphQLRouter
+
+# Konfigurasi URL Service (Mendukung Docker & Localhost)
+INVENTORY_URL = os.getenv("INVENTORY_URL", "http://localhost:8002/graphql")
+HOSPITAL_URL = os.getenv("HOSPITAL_URL", "http://localhost:8004/graphql")
 
 @strawberry.type
 class Transaction:
@@ -33,7 +38,7 @@ class Mutation:
             async with httpx.AsyncClient() as client:
                 try:
                     hp_query = {"query": f"query {{ validatePrescription(id: \"{prescription_id}\") {{ isValid }} }}"}
-                    hp_res = await client.post("http://hospital-mock:8004/graphql", json=hp_query)
+                    hp_res = await client.post(HOSPITAL_URL, json=hp_query)
                     if not hp_res.json()['data']['validatePrescription']['isValid']:
                         return "Error: Resep Tidak Valid"
                 except Exception:
@@ -43,7 +48,7 @@ class Mutation:
         async with httpx.AsyncClient() as client:
             try:
                 inv_query = {"query": "query { medicines { id price } }"}
-                inv_res = await client.post("http://inventory-service:8002/graphql", json=inv_query)
+                inv_res = await client.post(INVENTORY_URL, json=inv_query)
                 medicines = inv_res.json()['data']['medicines']
                 target = next((m for m in medicines if m['id'] == medicine_id), None)
                 if not target: 
@@ -75,5 +80,5 @@ app.include_router(GraphQLRouter(schema), prefix="/graphql")
 
 if __name__ == "__main__":
     import uvicorn
-    # Port 8002 di sini akan di-map ke 8003 di komputer Anda lewat docker-compose
-    uvicorn.run(app, host="0.0.0.0", port=8002)
+    # Port 8003 untuk menghindari konflik dengan inventory-service (8002)
+    uvicorn.run(app, host="0.0.0.0", port=8003)

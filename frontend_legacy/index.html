@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apotek Terintegrasi - Kelompok 2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto space-y-6">
+        <h1 class="text-3xl font-bold text-blue-800 text-center">Sistem Manajemen Apotek</h1>
+
+        <div id="login-section" class="bg-white p-6 rounded-lg shadow">
+            <h2 class="text-xl font-semibold mb-4">Login Apoteker/Kasir</h2>
+            <div class="flex gap-4">
+                <input id="username" type="text" placeholder="Username" class="border p-2 rounded w-full">
+                <input id="password" type="password" placeholder="Password" class="border p-2 rounded w-full">
+                <button onclick="login()" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Login</button>
+            </div>
+            <p id="auth-status" class="mt-2 text-sm text-gray-500 italic"></p>
+        </div>
+
+        <div id="transaction-section" class="hidden bg-white p-6 rounded-lg shadow">
+            <h2 class="text-xl font-semibold mb-4">Transaksi Baru</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium">ID Resep dari Rumah Sakit</label>
+                    <input id="resep-id" type="text" placeholder="Contoh: RS-999" class="border p-2 rounded w-full">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium">Nominal Pembayaran (Rp)</label>
+                    <input id="pembayaran" type="number" placeholder="Masukkan jumlah uang" class="border p-2 rounded w-full">
+                </div>
+                <button onclick="prosesTransaksi()" class="w-full bg-green-600 text-white py-3 rounded font-bold hover:bg-green-700">
+                    Proses Transaksi & Kurangi Stok
+                </button>
+            </div>
+            <div id="result" class="mt-6 p-4 border rounded hidden"></div>
+        </div>
+    </div>
+
+    <script>
+    let jwtToken = "";
+
+    // Gunakan port 8001 untuk Auth Service
+    const AUTH_URL = 'http://localhost:8001/graphql';
+    // Gunakan port 8003 untuk Transaction Service (hasil map dari port internal 8002)
+    const TRANS_URL = 'http://localhost:8003/graphql';
+
+    async function login() {
+        const user = document.getElementById('username').value;
+        const pass = document.getElementById('password').value;
+        
+        // GraphQL Mutation login 
+        const query = `mutation { login(username: "${user}", password: "${pass}") { token } }`;
+
+        try {
+            const response = await fetch(AUTH_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query })
+            });
+            const data = await response.json();
+            
+            if (data.data?.login?.token) {
+                jwtToken = data.data.login.token;
+                document.getElementById('auth-status').innerText = "✅ Login Berhasil! Token disimpan.";
+                document.getElementById('transaction-section').classList.remove('hidden');
+            } else {
+                alert("Login Gagal! Periksa username/password.");
+            }
+        } catch (err) {
+            alert("Koneksi ke Auth Service Gagal! Pastikan container port 8001 menyala.");
+        }
+    }
+
+    async function prosesTransaksi() {
+        const resepId = document.getElementById('resep-id').value;
+        const bayar = parseFloat(document.getElementById('pembayaran').value);
+
+        // Mutation createTransaction sesuai kontrak [cite: 162]
+        // Catatan: medicineId kita buat statis "1" untuk keperluan demo awal
+        const query = `mutation { 
+            create_transaction(medicine_id: "1", payment_amount: ${bayar}, prescription_id: "${resepId}") 
+        }`;
+
+        try {
+            const response = await fetch(TRANS_URL, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${jwtToken}` // Opsi A: Stateless Verification [cite: 98, 99]
+                },
+                body: JSON.stringify({ query })
+            });
+            const data = await response.json();
+            
+            const resDiv = document.getElementById('result');
+            resDiv.classList.remove('hidden');
+            
+            if (data.data?.create_transaction) {
+                const message = data.data.create_transaction;
+                resDiv.innerHTML = `<p class="font-bold">${message}</p>`;
+                
+                if (message.includes("Error")) {
+                    resDiv.className = "mt-6 p-4 border rounded bg-red-50 text-red-700";
+                } else {
+                    resDiv.className = "mt-6 p-4 border rounded bg-green-50 text-green-700";
+                }
+            } else {
+                resDiv.innerHTML = `<pre class="text-sm">${JSON.stringify(data.errors, null, 2)}</pre>`;
+                resDiv.className = "mt-6 p-4 border rounded bg-red-50 text-red-700";
+            }
+        } catch (err) {
+            alert("Gagal menghubungi Transaction Service di port 8003!");
+        }
+    }
+</script>
+</body>
+</html>
