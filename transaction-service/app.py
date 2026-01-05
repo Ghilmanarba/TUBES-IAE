@@ -102,7 +102,7 @@ class Query:
                     return PreviewResult(isSuccess=False, message=f"Resep ID {prescription_id} tidak ditemukan di sistem RS.")
                 
                 if resp.status_code != 200:
-                    return PreviewResult(isSuccess=False, message=f"Gagal mengambil resep. Status: {resp.status_code}")
+                    return PreviewResult(isSuccess=False, message=f"Partner API Error ({resp.status_code}): {resp.text}")
 
                 # Format Response Partner: { id, patientName, items: [{name, quantity}] }
                 data = resp.json()
