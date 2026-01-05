@@ -2,6 +2,7 @@ import strawberry
 import httpx
 import sqlite3
 import os
+from datetime import datetime, timedelta
 from typing import List, Optional
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -44,6 +45,17 @@ class PreviewResult:
     totalPrice: Optional[float] = None
 
 @strawberry.type
+class ChartDataPoint:
+    date: str
+    value: float
+
+@strawberry.type
+class DashboardStats:
+    totalTransactions: int
+    totalRevenue: float
+    revenueChart: List[ChartDataPoint]
+
+@strawberry.type
 class Transaction:
     id: strawberry.ID
     prescriptionId: str
@@ -55,6 +67,34 @@ class Query:
     @strawberry.field
     def health(self) -> str:
         return "OK"
+    
+    @strawberry.field
+    def dashboard_stats(self) -> DashboardStats:
+        conn = sqlite3.connect("transaction_db.sqlite")
+        cursor = conn.cursor()
+        
+        # 1. Total Transaksi
+        cursor.execute("SELECT COUNT(*), SUM(total_price) FROM transactions WHERE status='PAID'")
+        row = cursor.fetchone()
+        total_count = row[0] if row[0] else 0
+        total_revenue = row[1] if row[1] else 0.0
+        
+        # 2. Chart Data (Pendapatan 7 Hari Terakhir)
+        chart_data = []
+        for i in range(6, -1, -1):
+            date_val = (datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d')
+            # Query untuk hari spesifik (SQLite syntax for date comparison varies, using string matching for simplicity)
+            cursor.execute("SELECT SUM(total_price) FROM transactions WHERE date(created_at) = ?", (date_val,))
+            res = cursor.fetchone()
+            val = res[0] if res[0] else 0.0
+            chart_data.append(ChartDataPoint(date=date_val, value=val))
+            
+        conn.close()
+        return DashboardStats(
+            totalTransactions=total_count,
+            totalRevenue=total_revenue,
+            revenueChart=chart_data
+        )
 
     @strawberry.field
     async def preview_transaction(self, prescription_id: str) -> PreviewResult:
@@ -127,9 +167,6 @@ class Mutation:
         payment_amount: float, 
         prescription_id: str
     ) -> str:
-        
-        # NOTE: Logic ini sebenarnya duplikasi dari preview, di real production sebaiknya di-refactor
-        # Tapi untuk demo ini kita biarkan agar tetap independen.
         
         # 1. Validasi Resep
         prescription_items = []
