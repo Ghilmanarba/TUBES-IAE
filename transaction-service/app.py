@@ -8,9 +8,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from strawberry.fastapi import GraphQLRouter
 
-# Konfigurasi URL Service (Mendukung Docker & Localhost)
+# Konfigurasi URL Service
+# HOSPITAL_URL sekarang mengarah ke API REST Partner
 INVENTORY_URL = os.getenv("INVENTORY_URL", "http://localhost:8002/graphql")
-HOSPITAL_URL = os.getenv("HOSPITAL_URL", "http://localhost:8004/graphql")
+HOSPITAL_URL = "https://bb19d3ad-3c20-4317-b319-b5dec85ae252-00-vo63gs7ctiqn.spock.replit.dev"
 
 def init_db():
     conn = sqlite3.connect("transaction_db.sqlite")
@@ -56,13 +57,6 @@ class DashboardStats:
     revenueChart: List[ChartDataPoint]
 
 @strawberry.type
-class Transaction:
-    id: strawberry.ID
-    prescriptionId: str
-    totalPrice: float
-    status: str
-
-@strawberry.type
 class Query:
     @strawberry.field
     def health(self) -> str:
@@ -73,17 +67,14 @@ class Query:
         conn = sqlite3.connect("transaction_db.sqlite")
         cursor = conn.cursor()
         
-        # 1. Total Transaksi
         cursor.execute("SELECT COUNT(*), SUM(total_price) FROM transactions WHERE status='PAID'")
         row = cursor.fetchone()
         total_count = row[0] if row[0] else 0
         total_revenue = row[1] if row[1] else 0.0
         
-        # 2. Chart Data (Pendapatan 7 Hari Terakhir)
         chart_data = []
         for i in range(6, -1, -1):
             date_val = (datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d')
-            # Query untuk hari spesifik (SQLite syntax for date comparison varies, using string matching for simplicity)
             cursor.execute("SELECT SUM(total_price) FROM transactions WHERE date(created_at) = ?", (date_val,))
             res = cursor.fetchone()
             val = res[0] if res[0] else 0.0
@@ -98,58 +89,70 @@ class Query:
 
     @strawberry.field
     async def preview_transaction(self, prescription_id: str) -> PreviewResult:
-        # 1. Ambil Data Resep
+        # 1. Ambil Data Resep dari External REST API
         prescription_items = []
         patient_name = "Unknown"
+        
         async with httpx.AsyncClient() as client:
             try:
-                hp_query = {"query": f"query {{ validatePrescription(id: \"{prescription_id}\") {{ isValid patientName list_medicines: medicines {{ id name qty }} }} }}"}
-                hp_res = await client.post(HOSPITAL_URL, json=hp_query)
-                hp_data = hp_res.json()['data']['validatePrescription']
+                # Call REST API Partner
+                resp = await client.get(f"{HOSPITAL_URL}/api/prescriptions/{prescription_id}")
                 
-                if not hp_data['isValid']:
-                    return PreviewResult(isSuccess=False, message="Resep Tidak Valid")
+                if resp.status_code == 404:
+                    return PreviewResult(isSuccess=False, message=f"Resep ID {prescription_id} tidak ditemukan di sistem RS.")
                 
-                prescription_items = hp_data['list_medicines']
-                patient_name = hp_data.get('patientName', 'Unknown')
-                if not prescription_items:
-                    return PreviewResult(isSuccess=False, message="Resep kosong")
+                if resp.status_code != 200:
+                    return PreviewResult(isSuccess=False, message=f"Gagal mengambil resep. Status: {resp.status_code}")
+
+                # Format Response Partner: { id, patientName, items: [{name, quantity}] }
+                data = resp.json()
+                patient_name = data.get('patientName', 'Unknown')
+                raw_items = data.get('items', [])
+                
+                if not raw_items:
+                    return PreviewResult(isSuccess=False, message="Resep kosong (tidak ada obat).")
 
             except Exception as e:
-                return PreviewResult(isSuccess=False, message=f"Gagal koneksi ke Hospital Service: {str(e)}")
+                return PreviewResult(isSuccess=False, message=f"Koneksi ke RS Gagal: {str(e)}")
 
-        # 2. Ambil Harga dari Inventory
+        # 2. Cocokkan dengan Inventory Lokal (berdasarkan Nama Obat)
         items_detail = []
         total_price = 0.0
         
         async with httpx.AsyncClient() as client:
             try:
+                # Ambil semua obat dari inventory kita
                 inv_query = {"query": "query { medicines { id price stock name } }"}
                 inv_res = await client.post(INVENTORY_URL, json=inv_query)
                 inventory_medicines = inv_res.json()['data']['medicines']
                 
-                for item in prescription_items:
-                    inv_item = next((m for m in inventory_medicines if m['id'] == item['id']), None)
+                for item in raw_items:
+                    # Partner pakai 'quantity', inventory kita butuh 'qty'
+                    needed_qty = item.get('quantity', 0)
+                    med_name = item.get('name', '')
+                    
+                    # Cari obat di inventory kita yang namanya mirip (case-insensitive)
+                    inv_item = next((m for m in inventory_medicines if m['name'].lower() == med_name.lower()), None)
                     
                     if not inv_item:
-                        return PreviewResult(isSuccess=False, message=f"Obat ID {item['id']} tidak ditemukan")
+                        return PreviewResult(isSuccess=False, message=f"Obat '{med_name}' tidak tersedia di apotek kami.")
                     
-                    if inv_item['stock'] < item['qty']:
-                        return PreviewResult(isSuccess=False, message=f"Stok {inv_item['name']} kurang")
+                    if inv_item['stock'] < needed_qty:
+                        return PreviewResult(isSuccess=False, message=f"Stok '{med_name}' kurang (Sisa: {inv_item['stock']}).")
                     
-                    subtotal = inv_item['price'] * item['qty']
+                    subtotal = inv_item['price'] * needed_qty
                     total_price += subtotal
                     
                     items_detail.append(ItemDetail(
-                        id=item['id'],
+                        id=inv_item['id'],
                         name=inv_item['name'],
-                        qty=item['qty'],
+                        qty=needed_qty,
                         price=inv_item['price'],
                         subtotal=subtotal
                     ))
                     
             except Exception as e:
-                return PreviewResult(isSuccess=False, message=f"Gagal koneksi ke Inventory: {str(e)}")
+                return PreviewResult(isSuccess=False, message=f"Gagal cek inventory: {str(e)}")
 
         return PreviewResult(
             isSuccess=True,
@@ -168,23 +171,20 @@ class Mutation:
         prescription_id: str
     ) -> str:
         
-        # 1. Validasi Resep
+        # 1. Validasi & Ambil Resep (REST API)
         prescription_items = []
         async with httpx.AsyncClient() as client:
             try:
-                hp_query = {"query": f"query {{ validatePrescription(id: \"{prescription_id}\") {{ isValid list_medicines: medicines {{ id name qty }} }} }}"}
-                hp_res = await client.post(HOSPITAL_URL, json=hp_query)
-                hp_data = hp_res.json()['data']['validatePrescription']
-                
-                if not hp_data['isValid']: return "Error: Resep Tidak Valid"
-                prescription_items = hp_data['list_medicines']
-                if not prescription_items: return "Error: Resep kosong"
-
+                resp = await client.get(f"{HOSPITAL_URL}/api/prescriptions/{prescription_id}")
+                if resp.status_code != 200: return "Error: Resep tidak ditemukan / Gagal koneksi"
+                data = resp.json()
+                prescription_items = data.get('items', [])
             except Exception as e: return f"Error: {str(e)}"
 
-        # 2. Cek Stok & Hitung Total
+        # 2. Cek Inventory, Hitung Total & Siapkan Update Stok
         total_price = 0
-        items_summary = []
+        items_to_deduct = [] # List of tuples (id, qty)
+        
         async with httpx.AsyncClient() as client:
             try:
                 inv_query = {"query": "query { medicines { id price stock name } }"}
@@ -192,26 +192,36 @@ class Mutation:
                 inventory_medicines = inv_res.json()['data']['medicines']
                 
                 for item in prescription_items:
-                    inv_item = next((m for m in inventory_medicines if m['id'] == item['id']), None)
-                    if not inv_item: return f"Error: {item['name']} not found"
-                    if inv_item['stock'] < item['qty']: return f"Error: Low stock for {inv_item['name']}"
+                    name = item.get('name', '')
+                    qty = item.get('quantity', 0)
                     
-                    total_price += inv_item['price'] * item['qty']
-                    items_summary.append(f"{item['qty']}x {inv_item['name']}")
-            except Exception as e: return f"Error: Inventory check failed {str(e)}"
+                    inv_item = next((m for m in inventory_medicines if m['name'].lower() == name.lower()), None)
+                    
+                    if not inv_item: return f"Error: Obat '{name}' tidak ada di katalog"
+                    if inv_item['stock'] < qty: return f"Error: Stok '{name}' tidak cukup"
+                    
+                    total_price += inv_item['price'] * qty
+                    items_to_deduct.append({
+                        "id": inv_item['id'],
+                        "qty": qty,
+                        "name": inv_item['name']
+                    })
+                    
+            except Exception as e: return f"Error Inventory: {str(e)}"
 
         # 3. Validasi Pembayaran
         if payment_amount < total_price:
             return f"Error: Pembayaran Kurang. Total: Rp {total_price:,.0f}"
 
-        # 4. Potong Stok
+        # 4. Eksekusi Potong Stok
         async with httpx.AsyncClient() as client:
             try:
-                for item in prescription_items:
-                    qty = -1 * item['qty']
-                    mutation = f"mutation {{ updateStock(id: \"{item['id']}\", amount: {qty}) }}"
+                for item in items_to_deduct:
+                    # Mutation updateStock expects amount to add, so we send negative
+                    deduct_amount = -1 * item['qty']
+                    mutation = f"mutation {{ updateStock(id: \"{item['id']}\", amount: {deduct_amount}) }}"
                     await client.post(INVENTORY_URL, json={"query": mutation})
-            except Exception: return "Error: Stock update failed"
+            except Exception: return "Error: Gagal update stok"
 
         # 5. Simpan Transaksi
         try:
@@ -219,7 +229,9 @@ class Mutation:
             conn.execute("INSERT INTO transactions (prescription_id, total_price, status) VALUES (?, ?, ?)", (prescription_id, total_price, "PAID"))
             conn.commit()
             conn.close()
-            return f"Sukses! {', '.join(items_summary)}. Total: Rp {total_price:,.0f}"
+            
+            item_summary = ", ".join([f"{x['qty']}x {x['name']}" for x in items_to_deduct])
+            return f"Sukses! {item_summary}. Kembalian: Rp {payment_amount - total_price:,.0f}"
         except Exception as e: return f"Error Database: {str(e)}"
 
 schema = strawberry.Schema(query=Query, mutation=Mutation)
