@@ -57,54 +57,6 @@ class Query:
 @strawberry.type
 class Mutation:
     @strawberry.mutation
-    def createMedicine(self, name: str, stock: int, price: float, category: str) -> Medicine:
-        conn = sqlite3.connect("inventory_db.sqlite")
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO medicines (name, stock, price, category) VALUES (?, ?, ?, ?)", (name, stock, price, category))
-        new_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
-        return Medicine(id=str(new_id), name=name, stock=stock, price=price, category=category)
-
-    @strawberry.mutation
-    def updateMedicine(self, id: strawberry.ID, name: Optional[str] = None, stock: Optional[int] = None, price: Optional[float] = None, category: Optional[str] = None) -> str:
-        conn = sqlite3.connect("inventory_db.sqlite")
-        queries = []
-        params = []
-        if name:
-            queries.append("name = ?")
-            params.append(name)
-        if stock is not None:
-            queries.append("stock = ?")
-            params.append(stock)
-        if price is not None:
-            queries.append("price = ?")
-            params.append(price)
-        if category:
-            queries.append("category = ?")
-            params.append(category)
-        
-        if not queries:
-            conn.close()
-            return "Tidak ada perubahan"
-
-        params.append(id)
-        cursor = conn.execute(f"UPDATE medicines SET {', '.join(queries)} WHERE id = ?", params)
-        conn.commit()
-        updated = cursor.rowcount > 0
-        conn.close()
-        return "Berhasil diperbarui" if updated else "ID tidak ditemukan"
-
-    @strawberry.mutation
-    def deleteMedicine(self, id: strawberry.ID) -> str:
-        conn = sqlite3.connect("inventory_db.sqlite")
-        cursor = conn.execute("DELETE FROM medicines WHERE id = ?", (id,))
-        conn.commit()
-        deleted = cursor.rowcount > 0
-        conn.close()
-        return "Berhasil dihapus" if deleted else "ID tidak ditemukan"
-
-    @strawberry.mutation
     def updateStock(self, id: strawberry.ID, amount: int) -> str:
         conn = sqlite3.connect("inventory_db.sqlite")
         conn.execute("UPDATE medicines SET stock = stock + ? WHERE id = ?", (amount, id))

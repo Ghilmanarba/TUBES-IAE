@@ -2,3 +2,31 @@
 venv/
 env/
 ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pythonlibs/
+*.egg-info/
+.eggs/
+*.egg
+
+# Node.js
+node_modules/
+dist/
+.cache/
+.vite/
+*.log
+
+# SQLite databases
+*.sqlite
+
+# Environment files
+.env
+.env.*
+*.local
+
+# Replit
+.upm/
+.config/

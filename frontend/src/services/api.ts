@@ -1,10 +1,7 @@
-
-
-
 export const GRAPHQL_URLS = {
-    AUTH: 'http://localhost:8001/graphql',
-    TRANSACTION: 'http://localhost:8003/graphql',
-    INVENTORY: 'http://localhost:8002/graphql' // Usually not exposed directly to frontend in this architecture, but checking just in case.
+    AUTH: '/api/auth',
+    TRANSACTION: '/api/transaction',
+    INVENTORY: '/api/inventory'
 };
 
 interface GraphQLResponse<T> {

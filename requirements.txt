@@ -7,3 +7,13 @@ python-jose[cryptography]
 httpx
 python-multipart
 PyJWT
+bcrypt
+fastapi
+httpx
+passlib[bcrypt]
+PyJWT
+python-jose[cryptography]
+python-multipart
+sqlalchemy
+strawberry-graphql[fastapi]
+uvicorn

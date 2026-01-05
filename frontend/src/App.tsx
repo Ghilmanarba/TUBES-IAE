@@ -4,7 +4,6 @@ import { AuthProvider } from './context/AuthContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Transaction from './pages/Transaction';
-import Inventory from './pages/Inventory';
 import Layout from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
@@ -19,7 +18,6 @@ function App() {
             <Route element={<Layout />}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/transaction" element={<Transaction />} />
-              <Route path="/inventory" element={<Inventory />} />
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
