@@ -50,7 +50,7 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-white flex items-center justify-center p-4">
             <div className="max-w-md w-full bg-slate-900 rounded-xl shadow-2xl p-8 border border-slate-800">
                 <div className="text-center mb-8">
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-800 text-green-500 mb-4 ring-1 ring-green-500/20">
@@ -85,7 +85,7 @@ export default function Login() {
                         type="submit"
                         fullWidth
                         disabled={isLoading}
-                        className="bg-green-600 hover:bg-green-700 text-white font-medium py-2.5"
+                        className="!bg-green-600 !hover:bg-green-700 !text-white font-medium py-2.5 !shadow-lg !shadow-green-900/20"
                     >
                         {isLoading ? 'Memproses...' : 'Masuk'}
                     </Button>
