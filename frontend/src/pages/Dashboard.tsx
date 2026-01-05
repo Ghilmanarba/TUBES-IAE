@@ -93,7 +93,7 @@ export default function Dashboard() {
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="date" fontSize={12} />
                             <YAxis fontSize={12} />
-                            <Tooltip formatter={(value: number) => `Rp ${value.toLocaleString()}`} />
+                            <Tooltip formatter={(value: any) => `Rp ${Number(value).toLocaleString()}`} />
                             <Line type="monotone" dataKey="value" stroke="#16a34a" strokeWidth={2} name="Pendapatan" />
                         </LineChart>
                     </ResponsiveContainer>
