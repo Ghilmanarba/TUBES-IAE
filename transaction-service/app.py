@@ -129,7 +129,8 @@ class Query:
                 for item in raw_items:
                     # Partner pakai 'quantity', inventory kita butuh 'qty'
                     needed_qty = item.get('quantity', 0)
-                    med_name = item.get('name', '')
+                    # Partner logic: check 'medicineName' first, then 'name'
+                    med_name = item.get('medicineName', item.get('name', ''))
                     
                     # Cari obat di inventory kita yang namanya mirip (case-insensitive)
                     inv_item = next((m for m in inventory_medicines if m['name'].lower() == med_name.lower()), None)
@@ -196,7 +197,7 @@ class Mutation:
                 inventory_medicines = inv_res.json()['data']['medicines']
                 
                 for item in prescription_items:
-                    name = item.get('name', '')
+                    name = item.get('medicineName', item.get('name', ''))
                     qty = item.get('quantity', 0)
                     
                     inv_item = next((m for m in inventory_medicines if m['name'].lower() == name.lower()), None)
