@@ -134,6 +134,10 @@ class Query:
                     # Cari obat di inventory kita yang namanya mirip (case-insensitive)
                     inv_item = next((m for m in inventory_medicines if m['name'].lower() == med_name.lower()), None)
                     
+                    # Debugging: Print item content if name is missing
+                    if not med_name:
+                        return PreviewResult(isSuccess=False, message=f"Format Item Salah (Tidak ada 'name'). Data diterima: {str(item)}")
+                    
                     if not inv_item:
                         return PreviewResult(isSuccess=False, message=f"Obat '{med_name}' tidak tersedia di apotek kami.")
                     
