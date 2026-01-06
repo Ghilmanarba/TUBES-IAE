@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Katalog Obat - AmplePharma</title>
+    <link href="./css/style.css" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body id="app-layout">
+    <!-- Sidebar injected -->
+
+    <main class="flex-1 transition-all duration-300">
+        <div class="p-8 max-w-7xl mx-auto space-y-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-900">Katalog Obat</h1>
+                    <p class="text-slate-500">Kelola stok dan harga obat.</p>
+                </div>
+                <button id="add-btn"
+                    class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors font-medium">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Tambah Obat
+                </button>
+            </div>
+
+            <div class="flex gap-4 mb-6">
+                <div class="relative flex-1 max-w-sm">
+                    <i data-lucide="search" class="absolute left-3 top-2.5 text-slate-400 w-4 h-4"></i>
+                    <input type="text" id="search-input" placeholder="Cari obat atau kategori..."
+                        class="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none">
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                            <th class="p-4 font-semibold text-slate-700">Nama Obat</th>
+                            <th class="p-4 font-semibold text-slate-700">Kategori</th>
+                            <th class="p-4 font-semibold text-slate-700">Stok</th>
+                            <th class="p-4 font-semibold text-slate-700">Harga (Rp)</th>
+                            <th class="p-4 font-semibold text-slate-700 text-right">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100" id="inventory-table-body">
+                        <tr>
+                            <td colspan="5" class="p-8 text-center text-slate-500">Memuat data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Form -->
+    <div id="modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden transform transition-all scale-100">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                <h2 class="text-xl font-bold" id="modal-title">Tambah Obat Baru</h2>
+                <button id="modal-close" class="text-slate-400 hover:text-slate-600 font-bold text-2xl">&times;</button>
+            </div>
+            <form id="inventory-form" class="p-6 space-y-4">
+                <input type="hidden" id="edit-id">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Nama Obat</label>
+                    <input type="text" id="name" required
+                        class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Kategori</label>
+                    <input type="text" id="category" required placeholder="Contoh: Bebas, Keras, Vitamin"
+                        class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Stok</label>
+                        <input type="number" id="stock" required
+                            class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Harga (Rp)</label>
+                        <input type="number" id="price" required
+                            class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none">
+                    </div>
+                </div>
+                <div class="pt-4 flex gap-3">
+                    <button type="button" id="modal-cancel"
+                        class="flex-1 py-2 border border-slate-200 rounded-lg hover:bg-slate-50 font-medium">Batal</button>
+                    <button type="submit"
+                        class="flex-1 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="./src/js/inventory.js"></script>
+</body>
+
+</html>

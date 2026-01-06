@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transaksi - AmplePharma</title>
+    <link href="./css/style.css" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body id="app-layout">
+    <!-- Sidebar injected -->
+
+    <main class="flex-1 transition-all duration-300">
+        <div class="p-8 max-w-2xl mx-auto space-y-8">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900">Transaksi Baru</h1>
+                <p class="text-slate-500">Proses resep dan pembayaran obat.</p>
+            </div>
+
+            <div class="bg-white p-8 rounded-xl shadow-sm border border-slate-100">
+
+                <!-- STEP 1: INPUT -->
+                <div id="step-input">
+                    <form id="check-form" class="space-y-6">
+                        <div class="bg-blue-50 p-4 rounded-lg text-sm text-blue-700 mb-6">
+                            <h4 class="font-semibold mb-1">Informasi Demo</h4>
+                            <p>Masukkan ID Resep untuk melihat rincian obat dan harga.</p>
+                            <p class="mt-1 font-mono text-xs">ID Valid: RS-1001 s/d RS-1005</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">ID Resep</label>
+                            <input type="text" id="prescription-id" required placeholder="Contoh: RS-1001"
+                                class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none">
+                        </div>
+
+                        <button type="submit" id="check-btn"
+                            class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-lg transition-colors">
+                            Cek Resep
+                        </button>
+                    </form>
+                </div>
+
+                <!-- STEP 2: PREVIEW -->
+                <div id="step-preview" class="hidden space-y-6">
+                    <div class="border-b pb-4">
+                        <h3 class="text-lg font-semibold text-slate-800">Rincian Resep</h3>
+                        <p class="text-sm text-slate-500">Pasien: <span id="patient-name"
+                                class="font-medium text-slate-900"></span></p>
+                    </div>
+
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-slate-50 text-slate-600 font-medium">
+                            <tr>
+                                <th class="p-3">Obat</th>
+                                <th class="p-3 text-center">Qty</th>
+                                <th class="p-3 text-right">Harga</th>
+                                <th class="p-3 text-right">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y" id="items-body">
+                            <!-- Items -->
+                        </tbody>
+                        <tfoot class="border-t font-bold text-slate-900">
+                            <tr>
+                                <td colspan="3" class="p-3 text-right">Total Tagihan</td>
+                                <td class="p-3 text-right text-lg" id="total-price">Rp 0</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+
+                    <div class="pt-4 border-t space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Nominal Pembayaran (Rp)</label>
+                            <input type="number" id="payment-amount" required placeholder="Masukkan jumlah uang"
+                                class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none">
+                        </div>
+
+                        <div class="flex gap-3">
+                            <button type="button" id="cancel-btn"
+                                class="flex-1 py-2 border border-slate-200 rounded-lg hover:bg-slate-50 font-medium">Batal</button>
+                            <button type="button" id="pay-btn"
+                                class="flex-1 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium">Konfirmasi
+                                Pembayaran</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 3: SUCCESS -->
+                <div id="step-success" class="hidden text-center py-8 space-y-4">
+                    <div
+                        class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
+                        <i data-lucide="check-circle-2" class="w-8 h-8"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900">Transaksi Berhasil!</h3>
+                    <p class="text-slate-600" id="success-message"></p>
+                    <button id="reset-btn"
+                        class="mt-4 px-6 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800">Transaksi
+                        Baru</button>
+                </div>
+
+                <!-- ERROR ALERT -->
+                <div id="error-alert" class="hidden mt-6 p-4 rounded-lg flex items-start gap-3 bg-red-50 text-red-700">
+                    <i data-lucide="alert-circle" class="shrink-0 w-5 h-5"></i>
+                    <div>
+                        <h4 class="font-semibold">Gagal</h4>
+                        <p class="text-sm" id="error-message"></p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script type="module" src="./src/js/transaction.js"></script>
+</body>
+
+</html>

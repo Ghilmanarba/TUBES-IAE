@@ -1,13 +1,54 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - AmplePharma</title>
+    <link href="./css/style.css" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body id="app-layout">
+    <!-- Sidebar injected by layout.js -->
+
+    <main class="flex-1 transition-all duration-300">
+        <div class="p-8 max-w-7xl mx-auto space-y-8">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900">Dashboard</h1>
+                <p class="text-slate-500">Selamat datang kembali, <span id="user-name">User</span>. Inilah ringkasan
+                    apotek hari ini.</p>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" id="stats-container">
+                <!-- Stat Cards Injected Here -->
+                <div class="text-center text-slate-500 py-8 col-span-full">Memuat data...</div>
+            </div>
+
+            <!-- Charts Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Revenue Chart -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-96 flex flex-col">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4">Tren Pendapatan (7 Hari)</h3>
+                    <div class="flex-1 relative w-full h-full">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Stock Chart -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-96 flex flex-col">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4">Stok Obat</h3>
+                    <div class="flex-1 relative w-full h-full">
+                        <canvas id="stockChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module" src="./src/js/dashboard.js"></script>
+</body>
+
 </html>
