@@ -53,7 +53,7 @@ checkForm.addEventListener('submit', async (e) => {
                 message
                 patientName
                 totalPrice
-                items { id name qty price subtotal }
+                items { id name qty price subtotal instructions }
             }
         }`;
 
@@ -65,7 +65,10 @@ checkForm.addEventListener('submit', async (e) => {
 
             itemsBody.innerHTML = result.items.map(item => `
                 <tr>
-                    <td class="p-3">${item.name}</td>
+                    <td class="p-3">
+                        <div class="font-medium">${item.name}</div>
+                        <div class="text-xs text-slate-500">${item.instructions}</div>
+                    </td>
                     <td class="p-3 text-center">${item.qty}</td>
                     <td class="p-3 text-right">${formatRupiah(item.price)}</td>
                     <td class="p-3 text-right font-medium">${formatRupiah(item.subtotal)}</td>

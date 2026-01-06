@@ -36,6 +36,7 @@ class ItemDetail:
     qty: int
     price: float
     subtotal: float
+    instructions: str
 
 @strawberry.type
 class PreviewResult:
@@ -148,12 +149,15 @@ class Query:
                     subtotal = inv_item['price'] * needed_qty
                     total_price += subtotal
                     
+                    instructions = item.get('instructions', '-')
+
                     items_detail.append(ItemDetail(
                         id=inv_item['id'],
                         name=inv_item['name'],
                         qty=needed_qty,
                         price=inv_item['price'],
-                        subtotal=subtotal
+                        subtotal=subtotal,
+                        instructions=instructions
                     ))
                     
             except Exception as e:
