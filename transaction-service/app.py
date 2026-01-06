@@ -233,6 +233,7 @@ class Mutation:
             except Exception: return "Error: Gagal update stok"
 
         # 5. Simpan Transaksi
+        success_msg = ""
         try:
             conn = sqlite3.connect("transaction_db.sqlite")
             conn.execute("INSERT INTO transactions (prescription_id, total_price, status) VALUES (?, ?, ?)", (prescription_id, total_price, "PAID"))
@@ -240,8 +241,25 @@ class Mutation:
             conn.close()
             
             item_summary = ", ".join([f"{x['qty']}x {x['name']}" for x in items_to_deduct])
-            return f"Sukses! {item_summary}. Kembalian: Rp {payment_amount - total_price:,.0f}"
+            success_msg = f"Sukses! {item_summary}. Kembalian: Rp {payment_amount - total_price:,.0f}"
         except Exception as e: return f"Error Database: {str(e)}"
+
+        # 6. Webhook: Update Status Resep di RS (processed)
+        async with httpx.AsyncClient() as client:
+            try:
+                webhook_url = f"{HOSPITAL_URL}/api/prescriptions/{prescription_id}"
+                # Fire and forget (optional: await inside a background task if we didn't want to wait)
+                # But here we wait to ensure it is sent
+                await client.put(
+                    webhook_url, 
+                    json={"status": "processed"}, 
+                    headers={"Content-Type": "application/json"},
+                    timeout=5.0 # Short timeout to not block UI too long
+                )
+            except Exception as e:
+                print(f"Warning: Webhook error {str(e)}")
+
+        return success_msg
 
 schema = strawberry.Schema(query=Query, mutation=Mutation)
 app = FastAPI()
