@@ -9,9 +9,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from strawberry.fastapi import GraphQLRouter
 
 # Konfigurasi URL Service
-# HOSPITAL_URL sekarang mengarah ke API REST Partner
 INVENTORY_URL = os.getenv("INVENTORY_URL", "http://localhost:8002/graphql")
-HOSPITAL_URL = "https://bb19d3ad-3c20-4317-b319-b5dec85ae252-00-vo63gs7ctiqn.spock.replit.dev"
+# Default ke local docker mock jika tidak ada env, tapi tetap support env var
+HOSPITAL_URL = os.getenv("HOSPITAL_URL", "http://hospital-mock:8004/graphql")
 
 def init_db():
     conn = sqlite3.connect("transaction_db.sqlite")
@@ -90,31 +90,48 @@ class Query:
 
     @strawberry.field
     async def preview_transaction(self, prescription_id: str) -> PreviewResult:
-        # 1. Ambil Data Resep dari External REST API
-        prescription_items = []
+        # 1. Ambil Data Resep dari External GraphQL API (Hospital)
+        prescription_medicines = []
         patient_name = "Unknown"
         
         async with httpx.AsyncClient() as client:
             try:
-                # Call REST API Partner
-                resp = await client.get(f"{HOSPITAL_URL}/api/prescriptions/{prescription_id}")
-                
-                if resp.status_code == 404:
-                    return PreviewResult(isSuccess=False, message=f"Resep ID {prescription_id} tidak ditemukan di sistem RS.")
+                # Query GraphQL ke Hospital
+                query = """
+                query validate($id: String!) {
+                    validatePrescription(id: $id) {
+                        isValid
+                        patientName
+                        medicines {
+                            name
+                            qty
+                        }
+                    }
+                }
+                """
+                resp = await client.post(
+                    HOSPITAL_URL, 
+                    json={"query": query, "variables": {"id": prescription_id}},
+                    timeout=10.0
+                )
                 
                 if resp.status_code != 200:
-                    return PreviewResult(isSuccess=False, message=f"Partner API Error ({resp.status_code}): {resp.text}")
+                    return PreviewResult(isSuccess=False, message=f"Hospital Service Error ({resp.status_code})")
 
-                # Format Response Partner: { id, patientName, items: [{name, quantity}] }
-                data = resp.json()
-                patient_name = data.get('patientName', 'Unknown')
-                raw_items = data.get('items', [])
+                payload = resp.json()
+                data = payload.get("data", {}).get("validatePrescription")
                 
-                if not raw_items:
+                if not data or not data.get("isValid"):
+                    return PreviewResult(isSuccess=False, message=f"Resep ID {prescription_id} tidak valid atau tidak ditemukan.")
+
+                patient_name = data.get('patientName', 'Unknown')
+                prescription_medicines = data.get('medicines', [])
+                
+                if not prescription_medicines:
                     return PreviewResult(isSuccess=False, message="Resep kosong (tidak ada obat).")
 
             except Exception as e:
-                return PreviewResult(isSuccess=False, message=f"Koneksi ke RS Gagal: {str(e)}")
+                return PreviewResult(isSuccess=False, message=f"Gagal koneksi ke Hospital Service: {str(e)}")
 
         # 2. Cocokkan dengan Inventory Lokal (berdasarkan Nama Obat)
         items_detail = []
@@ -127,18 +144,16 @@ class Query:
                 inv_res = await client.post(INVENTORY_URL, json=inv_query)
                 inventory_medicines = inv_res.json()['data']['medicines']
                 
-                for item in raw_items:
-                    # Partner pakai 'quantity', inventory kita butuh 'qty'
-                    needed_qty = item.get('quantity', 0)
-                    # Partner logic: check 'medicineName' first, then 'name'
-                    med_name = item.get('medicineName', item.get('name', ''))
+                for item in prescription_medicines:
+                    # Hospital GraphQL returns 'qty', Inventory loop expects matching Logic
+                    needed_qty = item.get('qty', 0)
+                    med_name = item.get('name', '')
                     
                     # Cari obat di inventory kita yang namanya mirip (case-insensitive)
                     inv_item = next((m for m in inventory_medicines if m['name'].lower() == med_name.lower()), None)
                     
-                    # Debugging: Print item content if name is missing
                     if not med_name:
-                        return PreviewResult(isSuccess=False, message=f"Format Item Salah (Tidak ada 'name'). Data diterima: {str(item)}")
+                        return PreviewResult(isSuccess=False, message=f"Data obat dari RS tidak lengkap: {str(item)}")
                     
                     if not inv_item:
                         return PreviewResult(isSuccess=False, message=f"Obat '{med_name}' tidak tersedia di apotek kami.")
@@ -149,7 +164,8 @@ class Query:
                     subtotal = inv_item['price'] * needed_qty
                     total_price += subtotal
                     
-                    instructions = item.get('instructions', '-')
+                    # Instructions removed from Hospital Mock GraphQL, setting default
+                    instructions = "Sesuai resep dokter"
 
                     items_detail.append(ItemDetail(
                         id=inv_item['id'],
@@ -180,14 +196,35 @@ class Mutation:
         prescription_id: str
     ) -> str:
         
-        # 1. Validasi & Ambil Resep (REST API)
-        prescription_items = []
+        # 1. Validasi & Ambil Resep (GraphQL API)
+        prescription_medicines = []
         async with httpx.AsyncClient() as client:
             try:
-                resp = await client.get(f"{HOSPITAL_URL}/api/prescriptions/{prescription_id}")
-                if resp.status_code != 200: return "Error: Resep tidak ditemukan / Gagal koneksi"
-                data = resp.json()
-                prescription_items = data.get('items', [])
+                query = """
+                query validate($id: String!) {
+                    validatePrescription(id: $id) {
+                        isValid
+                        medicines {
+                            name
+                            qty
+                        }
+                    }
+                }
+                """
+                resp = await client.post(
+                    HOSPITAL_URL, 
+                    json={"query": query, "variables": {"id": prescription_id}},
+                    timeout=10.0
+                )
+                if resp.status_code != 200: return "Error: Gagal koneksi ke Hospital Service"
+                
+                payload = resp.json()
+                data = payload.get("data", {}).get("validatePrescription")
+                
+                if not data or not data.get("isValid"):
+                    return "Error: Resep tidak valid"
+                    
+                prescription_medicines = data.get('medicines', [])
             except Exception as e: return f"Error: {str(e)}"
 
         # 2. Cek Inventory, Hitung Total & Siapkan Update Stok
@@ -200,9 +237,9 @@ class Mutation:
                 inv_res = await client.post(INVENTORY_URL, json=inv_query)
                 inventory_medicines = inv_res.json()['data']['medicines']
                 
-                for item in prescription_items:
-                    name = item.get('medicineName', item.get('name', ''))
-                    qty = item.get('quantity', 0)
+                for item in prescription_medicines:
+                    name = item.get('name', '')
+                    qty = item.get('qty', 0)
                     
                     inv_item = next((m for m in inventory_medicines if m['name'].lower() == name.lower()), None)
                     
@@ -243,21 +280,9 @@ class Mutation:
             item_summary = ", ".join([f"{x['qty']}x {x['name']}" for x in items_to_deduct])
             success_msg = f"Sukses! {item_summary}. Kembalian: Rp {payment_amount - total_price:,.0f}"
         except Exception as e: return f"Error Database: {str(e)}"
-
-        # 6. Webhook: Update Status Resep di RS (processed)
-        async with httpx.AsyncClient() as client:
-            try:
-                webhook_url = f"{HOSPITAL_URL}/api/prescriptions/{prescription_id}"
-                # Fire and forget (optional: await inside a background task if we didn't want to wait)
-                # But here we wait to ensure it is sent
-                await client.put(
-                    webhook_url, 
-                    json={"status": "processed"}, 
-                    headers={"Content-Type": "application/json"},
-                    timeout=5.0 # Short timeout to not block UI too long
-                )
-            except Exception as e:
-                print(f"Warning: Webhook error {str(e)}")
+        
+        # 6. (Optional) Webhook / Notify RS - Not implemented in simple GraphQL query
+        # Bisa dibuat mutation terpisah di RS jika ada
 
         return success_msg
 

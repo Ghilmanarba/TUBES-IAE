@@ -16,7 +16,7 @@ services:
   transaction-service:
     build: ./transaction-service
     ports:
-      - "8003:8002" # Map 8003 di host ke 8002 di container
+      - "8003:8003" # Map 8003 di host ke 8003 di container
     volumes:
       - ./transaction-service:/app
     environment:
