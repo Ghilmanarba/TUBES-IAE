@@ -281,8 +281,34 @@ class Mutation:
             success_msg = f"Sukses! {item_summary}. Kembalian: Rp {payment_amount - total_price:,.0f}"
         except Exception as e: return f"Error Database: {str(e)}"
         
-        # 6. (Optional) Webhook / Notify RS - Not implemented in simple GraphQL query
-        # Bisa dibuat mutation terpisah di RS jika ada
+        # 6. Update Status Resep ke Hospital Service (processed)
+        # Kita lakukan secara async dan tidak membatalkan transaksi jika gagal (Best Effort)
+        async with httpx.AsyncClient() as client:
+            try:
+                mutation_update = """
+                mutation UpdateStatus($id: String!, $status: String!) {
+                    updatePrescriptionStatus(id: $id, status: $status) {
+                        success
+                        message
+                    }
+                }
+                """
+                
+                # Gunakan HOSPITAL_URL yang sudah dikonfigurasi (pastikan mengarah ke /records/graphql)
+                await client.post(
+                    HOSPITAL_URL, 
+                    json={
+                        "query": mutation_update, 
+                        "variables": {
+                            "id": prescription_id,
+                            "status": "processed"
+                        }
+                    },
+                    timeout=5.0
+                )
+            except Exception as e:
+                # Log error tapi jangan raise exception agar transaksi tetap dianggap sukses
+                print(f"Warning: Gagal update status prescription ke Hospital: {str(e)}")
 
         return success_msg
 
