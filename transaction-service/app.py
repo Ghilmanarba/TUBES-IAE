@@ -11,7 +11,7 @@ from strawberry.fastapi import GraphQLRouter
 # Konfigurasi URL Service
 INVENTORY_URL = os.getenv("INVENTORY_URL", "http://localhost:8002/graphql")
 # Default ke local docker mock jika tidak ada env, tapi tetap support env var
-HOSPITAL_URL = os.getenv("HOSPITAL_URL", "http://hospital-mock:8004/graphql")
+HOSPITAL_URL = os.getenv("HOSPITAL_URL", "https://5769410a-241d-4a71-8a11-f0e2e799d250-00-zotjui8bg0f8.janeway.replit.dev/records/graphql")
 
 def init_db():
     conn = sqlite3.connect("transaction_db.sqlite")
