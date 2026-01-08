@@ -1,0 +1,31 @@
+# === Queries for Hospital Mock Service (Port 8004) ===
+
+# 1. Validasi Resep (Digunakan oleh Transaction Service)
+query ValidateResep {
+  validatePrescription(id: "RS-1001") {
+    isValid
+    patientName
+    medicines {
+      name
+      qty
+    }
+  }
+}
+
+# 2. Lihat Semua Resep (Data Mock)
+query SeeAllPrescriptions {
+  allPrescriptions {
+    id
+    patientName
+    doctorName
+    medicines {
+      name
+      qty
+    }
+  }
+}
+
+# 3. Health Check
+query HealthCheck {
+  health
+}

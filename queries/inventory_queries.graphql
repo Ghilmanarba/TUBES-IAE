@@ -1,0 +1,52 @@
+# === Queries for Inventory Service (Port 8002) ===
+
+# 1. Lihat Semua Obat (Katalog)
+query GetAllMedicines {
+  medicines {
+    id
+    name
+    stock
+    price
+    category
+  }
+}
+
+# 2. Filter Obat berdasarkan Kategori
+query GetObatKeras {
+  medicines(category: "Keras") {
+    name
+    stock
+  }
+}
+
+# 3. Cek Stok (Untuk Provider ke RS)
+query CheckStockProvider {
+  checkStock(medicineName: "Paracetamol") {
+    name
+    stock
+    price
+  }
+}
+
+# 4. Tambah Stok (Mutation)
+mutation RestockObat {
+  updateStock(id: "1", amount: 50)
+}
+
+# 5. Tambah Obat Baru (Mutation)
+mutation AddNewMedicine {
+  createMedicine(
+    name: "Vitamin C",
+    stock: 100,
+    price: 2000,
+    category: "Bebas"
+  ) {
+    id
+    name
+  }
+}
+
+# 6. Health Check
+query HealthCheck {
+  health
+}

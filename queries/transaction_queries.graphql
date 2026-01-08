@@ -1,0 +1,41 @@
+# === Queries for Transaction Service (Port 8003) ===
+
+# 1. Preview Transaksi (Cek Resep ke RS sebelum bayar)
+query PreviewSale {
+  previewTransaction(prescriptionId: "RS-1001") {
+    isSuccess
+    message
+    patientName
+    totalPrice
+    items {
+      name
+      qty
+      subtotal
+    }
+  }
+}
+
+# 2. Buat Transaksi (Bayar & Potong Stok)
+mutation ProcessPayment {
+  createTransaction(
+    prescriptionId: "RS-1001", 
+    paymentAmount: 20000
+  )
+}
+
+# 3. Dashboard Statistik
+query GetDashboard {
+  dashboardStats {
+    totalTransactions
+    totalRevenue
+    revenueChart {
+      date
+      value
+    }
+  }
+}
+
+# 4. Health Check
+query HealthCheck {
+  health
+}

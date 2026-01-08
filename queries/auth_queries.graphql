@@ -1,0 +1,37 @@
+# === Queries for Auth Service (Port 8001) ===
+
+# 1. Login (Mendapatkan Token)
+mutation LoginUser {
+  login(username: "admin_naufal", password: "apotek123") {
+    token
+    user {
+      id
+      username
+      role
+      fullName
+    }
+  }
+}
+
+# 2. Cek Profil Sendiri (Butuh Header Authorization: Bearer <token>)
+query GetMyProfile {
+  me {
+    id
+    username
+    role
+    nim
+  }
+}
+
+# 3. Cari User by ID
+query FindUser {
+  userById(id: "1") {
+    username
+    fullName
+  }
+}
+
+# 4. Health Check
+query HealthCheck {
+  health
+}
