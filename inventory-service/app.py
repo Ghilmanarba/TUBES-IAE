@@ -31,6 +31,10 @@ class Medicine:
     price: float
     category: str
 
+    @strawberry.field
+    def isAvailable(self) -> bool:
+        return self.stock > 0
+
 @strawberry.type
 class Query:
     @strawberry.field
