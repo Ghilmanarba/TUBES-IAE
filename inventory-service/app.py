@@ -3,7 +3,14 @@ from typing import List, Optional
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import strawberry
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+import strawberry
 from strawberry.fastapi import GraphQLRouter
+import jwt
+
+SECRET_KEY = "apotek-iae-secret-key-2025"
+ALGORITHM = "HS256"
 
 def init_db():
     conn = sqlite3.connect("inventory_db.sqlite")
@@ -61,7 +68,11 @@ class Query:
 @strawberry.type
 class Mutation:
     @strawberry.mutation
-    def createMedicine(self, name: str, stock: int, price: float, category: str) -> Medicine:
+    def createMedicine(self, info, name: str, stock: int, price: float, category: str) -> Optional[Medicine]:
+        user = info.context.get("user")
+        if not user or user["role"] not in ["admin", "apoteker"]:
+            raise Exception("Unauthorized: Hanya Admin/Apoteker yang boleh akses")
+            
         conn = sqlite3.connect("inventory_db.sqlite")
         cursor = conn.cursor()
         cursor.execute("INSERT INTO medicines (name, stock, price, category) VALUES (?, ?, ?, ?)", (name, stock, price, category))
@@ -71,7 +82,11 @@ class Mutation:
         return Medicine(id=str(new_id), name=name, stock=stock, price=price, category=category)
 
     @strawberry.mutation
-    def updateMedicine(self, id: strawberry.ID, name: Optional[str] = None, stock: Optional[int] = None, price: Optional[float] = None, category: Optional[str] = None) -> str:
+    def updateMedicine(self, info, id: strawberry.ID, name: Optional[str] = None, stock: Optional[int] = None, price: Optional[float] = None, category: Optional[str] = None) -> str:
+        user = info.context.get("user")
+        if not user or user["role"] not in ["admin", "apoteker"]:
+            raise Exception("Unauthorized: Hanya Admin/Apoteker yang boleh akses")
+
         conn = sqlite3.connect("inventory_db.sqlite")
         queries = []
         params = []
@@ -100,7 +115,11 @@ class Mutation:
         return "Berhasil diperbarui" if updated else "ID tidak ditemukan"
 
     @strawberry.mutation
-    def deleteMedicine(self, id: strawberry.ID) -> str:
+    def deleteMedicine(self, info, id: strawberry.ID) -> str:
+        user = info.context.get("user")
+        if not user or user["role"] not in ["admin", "apoteker"]:
+            raise Exception("Unauthorized: Hanya Admin/Apoteker yang boleh akses")
+
         conn = sqlite3.connect("inventory_db.sqlite")
         cursor = conn.execute("DELETE FROM medicines WHERE id = ?", (id,))
         conn.commit()
@@ -109,7 +128,12 @@ class Mutation:
         return "Berhasil dihapus" if deleted else "ID tidak ditemukan"
 
     @strawberry.mutation
-    def updateStock(self, id: strawberry.ID, amount: int) -> str:
+    def updateStock(self, info, id: strawberry.ID, amount: int) -> str:
+        user = info.context.get("user")
+        # Catatan: Transaction Service akan forward token Admin saat penjualan
+        if not user or user["role"] not in ["admin", "apoteker"]:
+            raise Exception("Unauthorized: Hanya Admin/Apoteker yang boleh akses")
+
         conn = sqlite3.connect("inventory_db.sqlite")
         conn.execute("UPDATE medicines SET stock = stock + ? WHERE id = ?", (amount, id))
         conn.commit()
@@ -119,7 +143,16 @@ class Mutation:
 schema = strawberry.Schema(query=Query, mutation=Mutation)
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-app.include_router(GraphQLRouter(schema), prefix="/graphql")
+async def get_context(request: Request):
+    auth = request.headers.get("Authorization")
+    if auth:
+        try:
+            payload = jwt.decode(auth.replace("Bearer ", ""), SECRET_KEY, algorithms=[ALGORITHM])
+            return {"user": payload}
+        except: pass
+    return {"user": None}
+
+app.include_router(GraphQLRouter(schema, context_getter=get_context), prefix="/graphql")
 
 if __name__ == "__main__":
     import uvicorn

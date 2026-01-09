@@ -13,7 +13,16 @@ mutation LoginUser {
   }
 }
 
-# 2. Cek Profil Sendiri (Butuh Header Authorization: Bearer <token>)
+# 2. Register User Baru (Role otomatis "customer")
+mutation RegisterNewUser {
+  register(
+    username: "budi_pasien",
+    email: "budi@gmail.com",
+    password: "password123"
+  )
+}
+
+# 3. Cek Profil Sendiri (Butuh Header Authorization: Bearer <token>)
 query GetMyProfile {
   me {
     id

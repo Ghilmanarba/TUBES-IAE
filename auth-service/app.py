@@ -19,6 +19,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE,
+            email TEXT,
             password_hash TEXT,
             full_name TEXT,
             nim TEXT,
@@ -27,8 +28,8 @@ def init_db():
     """)
     # Akun default: admin_naufal / apotek123
     hashed = bcrypt.hashpw("apotek123".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    conn.execute("INSERT OR IGNORE INTO users (username, password_hash, full_name, nim, role) VALUES (?,?,?,?,?)",
-                 ("admin_naufal", hashed, "Naufal Admin", "102022300001", "admin"))
+    conn.execute("INSERT OR IGNORE INTO users (username, email, password_hash, full_name, nim, role) VALUES (?,?,?,?,?,?)",
+                 ("admin_naufal", "admin@apotek.com", hashed, "Naufal Admin", "102022300001", "admin"))
     conn.commit()
     conn.close()
 
@@ -38,8 +39,9 @@ init_db()
 class User:
     id: strawberry.ID
     username: str
-    fullName: str
-    nim: str
+    email: Optional[str]
+    fullName: Optional[str]
+    nim: Optional[str]
     role: str
 
 @strawberry.type
@@ -53,7 +55,14 @@ class Query:
     def me(self, info) -> Optional[User]:
         user_data = info.context.get("user")
         if not user_data: return None
-        return User(id=user_data["sub"], username=user_data["username"], fullName="Identitas Terverifikasi", nim=user_data["nim"], role=user_data["role"])
+        return User(
+            id=user_data["sub"], 
+            username=user_data["username"], 
+            email=user_data.get("email"),
+            fullName="Identitas Terverifikasi", 
+            nim=user_data.get("nim"), 
+            role=user_data["role"]
+        )
 
     @strawberry.field
     def userById(self, id: strawberry.ID) -> Optional[User]:
@@ -61,7 +70,7 @@ class Query:
         conn.row_factory = sqlite3.Row
         u = conn.execute("SELECT * FROM users WHERE id = ?", (id,)).fetchone()
         conn.close()
-        if u: return User(id=str(u["id"]), username=u["username"], fullName=u["full_name"], nim=u["nim"], role=u["role"])
+        if u: return User(id=str(u["id"]), username=u["username"], email=u["email"], fullName=u["full_name"], nim=u["nim"], role=u["role"])
         return None
 
 @strawberry.type
@@ -77,16 +86,34 @@ class Mutation:
             payload = {
                 "sub": str(u["id"]),
                 "username": u["username"],
-                "nim": u["nim"],
                 "role": u["role"],
+                "email": u["email"],
+                "nim": u["nim"],
                 "exp": datetime.utcnow() + timedelta(hours=8)
             }
             token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
             return AuthPayload(
                 token=token,
-                user=User(id=str(u["id"]), username=u["username"], fullName=u["full_name"], nim=u["nim"], role=u["role"])
+                user=User(id=str(u["id"]), username=u["username"], email=u["email"], fullName=u["full_name"], nim=u["nim"], role=u["role"])
             )
         return None
+
+    @strawberry.mutation
+    def register(self, username: str, email: str, password: str) -> str:
+        conn = sqlite3.connect("auth_db.sqlite")
+        try:
+            hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            # Default role='customer', full_name/nim kosong
+            conn.execute("INSERT INTO users (username, email, password_hash, full_name, nim, role) VALUES (?,?,?,?,?,?)",
+                        (username, email, hashed, "", "", "customer"))
+            conn.commit()
+            return "Registrasi berhasil (Customer)"
+        except sqlite3.IntegrityError:
+            return "Username sudah digunakan"
+        except Exception as e:
+            return f"Error: {str(e)}"
+        finally:
+            conn.close()
 
 schema = strawberry.Schema(query=Query, mutation=Mutation)
 

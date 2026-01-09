@@ -7,6 +7,11 @@ from typing import List, Optional
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from strawberry.fastapi import GraphQLRouter
+from fastapi import Request
+import jwt
+
+SECRET_KEY = "apotek-iae-secret-key-2025"
+ALGORITHM = "HS256"
 
 # Konfigurasi URL Service
 INVENTORY_URL = os.getenv("INVENTORY_URL", "http://localhost:8002/graphql")
@@ -192,9 +197,16 @@ class Mutation:
     @strawberry.mutation
     async def create_transaction(
         self, 
+        info,
         payment_amount: float, 
         prescription_id: str
     ) -> str:
+        user = info.context.get("user")
+        if not user:
+            return "Error: Unauthorized (Login required)"
+        
+        token = info.context.get("token") # Kita simpan raw token juga di context
+        headers = {"Authorization": f"Bearer {token}"} if token else {}
         
         # 1. Validasi & Ambil Resep (GraphQL API)
         prescription_medicines = []
@@ -234,7 +246,7 @@ class Mutation:
         async with httpx.AsyncClient() as client:
             try:
                 inv_query = {"query": "query { medicines { id price stock name } }"}
-                inv_res = await client.post(INVENTORY_URL, json=inv_query)
+                inv_res = await client.post(INVENTORY_URL, json=inv_query, headers=headers)
                 inventory_medicines = inv_res.json()['data']['medicines']
                 
                 for item in prescription_medicines:
@@ -266,7 +278,7 @@ class Mutation:
                     # Mutation updateStock expects amount to add, so we send negative
                     deduct_amount = -1 * item['qty']
                     mutation = f"mutation {{ updateStock(id: \"{item['id']}\", amount: {deduct_amount}) }}"
-                    await client.post(INVENTORY_URL, json={"query": mutation})
+                    await client.post(INVENTORY_URL, json={"query": mutation}, headers=headers)
             except Exception: return "Error: Gagal update stok"
 
         # 5. Simpan Transaksi
@@ -313,9 +325,19 @@ class Mutation:
         return success_msg
 
 schema = strawberry.Schema(query=Query, mutation=Mutation)
+async def get_context(request: Request):
+    auth = request.headers.get("Authorization")
+    if auth:
+        try:
+            token = auth.replace("Bearer ", "")
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            return {"user": payload, "token": token}
+        except: pass
+    return {"user": None, "token": None}
+
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-app.include_router(GraphQLRouter(schema), prefix="/graphql")
+app.include_router(GraphQLRouter(schema, context_getter=get_context), prefix="/graphql")
 
 if __name__ == "__main__":
     import uvicorn
