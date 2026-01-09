@@ -48,11 +48,26 @@
             </button>
         </form>
 
-        <p class="mt-6 text-center text-sm text-slate-500">
-            Belum punya akun? <a href="register.html" class="text-green-600 hover:text-green-700 font-medium">Daftar di
-                sini</a>
-            <br><span class="text-xs opacity-75">&copy; 2024 AmplePharma System</span>
-        </p>
+        <div class="mt-6 space-y-4">
+            <div class="relative">
+                <div class="absolute inset-0 flex items-center">
+                    <div class="w-full border-t border-slate-200"></div>
+                </div>
+                <div class="relative flex justify-center text-sm">
+                    <span class="px-2 bg-white text-slate-500">Atau</span>
+                </div>
+            </div>
+
+            <a href="register.html"
+                class="w-full bg-white hover:bg-slate-50 text-slate-700 font-semibold py-2.5 rounded-lg border border-slate-300 transition-colors flex items-center justify-center gap-2">
+                <i data-lucide="user-plus" class="w-4 h-4"></i>
+                <span>Buat Akun Baru</span>
+            </a>
+
+            <p class="text-center text-xs text-slate-400 mt-4">
+                &copy; 2024 AmplePharma System
+            </p>
+        </div>
     </div>
 
     <script type="module" src="./src/js/login.js"></script>
