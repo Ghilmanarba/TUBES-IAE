@@ -1,4 +1,4 @@
-Write-Host "Starting Auth Service on port 8001..."
+.\start_services.psWrite-Host "Starting Auth Service on port 8001..."
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd 'auth-service'; ..\venv\Scripts\python -m uvicorn app:app --port 8001"
 
 Write-Host "Starting Inventory Service on port 8002..."

@@ -16,7 +16,7 @@ ALGORITHM = "HS256"
 # Konfigurasi URL Service
 INVENTORY_URL = os.getenv("INVENTORY_URL", "http://localhost:8002/graphql")
 # Default ke local docker mock jika tidak ada env, tapi tetap support env var
-HOSPITAL_URL = os.getenv("HOSPITAL_URL", "https://5769410a-241d-4a71-8a11-f0e2e799d250-00-zotjui8bg0f8.janeway.replit.dev/records/graphql")
+HOSPITAL_URL = os.getenv("HOSPITAL_URL", "https://81b972ea-b654-45b9-8683-a01512069df0-00-1h5l5prwr5tpn.pike.replit.dev/records/graphql")
 
 def init_db():
     conn = sqlite3.connect("transaction_db.sqlite")
