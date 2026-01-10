@@ -128,6 +128,11 @@ async def get_context(request: Request):
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+from fastapi.responses import RedirectResponse
+@app.get("/")
+def root():
+    return RedirectResponse(url="/graphql")
 app.include_router(GraphQLRouter(schema, context_getter=get_context), prefix="/graphql")
 
 if __name__ == "__main__":

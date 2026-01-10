@@ -143,6 +143,11 @@ class Mutation:
 schema = strawberry.Schema(query=Query, mutation=Mutation)
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+from fastapi.responses import RedirectResponse
+@app.get("/")
+def root():
+    return RedirectResponse(url="/graphql")
 async def get_context(request: Request):
     auth = request.headers.get("Authorization")
     if auth:
